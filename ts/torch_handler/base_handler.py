@@ -182,6 +182,7 @@ class BaseHandler(abc.ABC):
         if not os.path.isfile(model_def_path):
             raise RuntimeError("Missing the model.py file")
 
+        sys.path.append(model_dir)
         module = importlib.import_module(model_file.split(".")[0])
         model_class_definitions = list_classes_from_module(module)
         if len(model_class_definitions) != 1:
