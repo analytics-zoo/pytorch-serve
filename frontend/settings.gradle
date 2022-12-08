@@ -1,2 +1,17 @@
+pluginManagement {
+  repositories {
+      maven {
+          url "https://plugins.gradle.org/m2/"
+      }
+      maven { allowInsecureProtocol = true
+          url 'https://maven.aliyun.com/repository/gradle-plugin' }
+      mavenLocal()
+      mavenCentral()
+      jcenter()
+      google()
+  }
+}
+
+
 include 'server',
 	'archive'
