@@ -18,7 +18,7 @@ from ts.model_loader import ModelLoaderFactory
 from ts.protocol.otf_message_handler import create_load_model_response, retrieve_msg
 
 MAX_FAILURE_THRESHOLD = 5
-SOCKET_ACCEPT_TIMEOUT = 30.0
+SOCKET_ACCEPT_TIMEOUT = 3000.0
 DEBUG = False
 BENCHMARK = os.getenv("TS_BENCHMARK")
 BENCHMARK = BENCHMARK in ["True", "true", "TRUE"]

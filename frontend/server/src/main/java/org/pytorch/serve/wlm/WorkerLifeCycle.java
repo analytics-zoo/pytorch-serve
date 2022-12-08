@@ -158,8 +158,8 @@ public class WorkerLifeCycle {
             /*}
             throw new WorkerInitializationException("Backend worker startup time out.");*/
         } /*catch (IOException e) {
-            throw new WorkerInitializationException("Failed start worker process", e);*/
-        } finally {
+            throw new WorkerInitializationException("Failed start worker process", e);
+        }*/ finally {
             if (!success) {
                 exit();
             }
