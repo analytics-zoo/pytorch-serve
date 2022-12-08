@@ -139,7 +139,7 @@ public class WorkerLifeCycle {
             String[] args = argl.toArray(new String[argl.size()]);
             logger.debug("Worker cmdline: {}", argl.toString());
 
-            synchronized (this) {
+            /*synchronized (this) {
                 process = Runtime.getRuntime().exec(args, envp, modelPath);
 
                 String threadName =
@@ -153,13 +153,13 @@ public class WorkerLifeCycle {
             if (latch.await(2, TimeUnit.MINUTES)) {
                 if (!success) {
                     throw new WorkerInitializationException("Backend stream closed.");
-                }
-                return;
-            }
-            throw new WorkerInitializationException("Backend worker startup time out.");
-        } catch (IOException e) {
+                }*/
+            return;
+            /*}
+            throw new WorkerInitializationException("Backend worker startup time out.");*/
+        } /*catch (IOException e) {
             throw new WorkerInitializationException("Failed start worker process", e);
-        } finally {
+        }*/ finally {
             if (!success) {
                 exit();
             }
