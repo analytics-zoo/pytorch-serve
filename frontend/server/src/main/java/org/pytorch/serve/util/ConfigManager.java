@@ -143,6 +143,14 @@ public final class ConfigManager {
             prop.setProperty(VERSION, version);
         }
 
+        String backendsIP = System.getenv("Backends_IP");
+        if (backendsIP != null) {
+            System.setProperty("Backends_IP", backendsIP);
+        } else if (System.getProperty("Backends_IP") == null) {
+            System.setProperty("Backends_IP", "127.0.0.1");
+        }
+
+
         String logLocation = System.getenv("LOG_LOCATION");
         if (logLocation != null) {
             System.setProperty("LOG_LOCATION", logLocation);
