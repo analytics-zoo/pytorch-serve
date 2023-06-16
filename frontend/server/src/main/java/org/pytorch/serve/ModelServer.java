@@ -205,6 +205,8 @@ public class ModelServer {
                                         archive.getModelVersion(),
                                         Model.MAX_WORKERS,
                                         workers),
+				"",
+				"",
                                 true,
                                 false);
                         startupModels.add(archive.getModelName());
@@ -264,6 +266,8 @@ public class ModelServer {
                                 archive.getModelVersion(),
                                 Model.MAX_WORKERS,
                                 workers),
+			"",
+			"",
                         true,
                         false);
                 startupModels.add(archive.getModelName());

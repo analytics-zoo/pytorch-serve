@@ -56,6 +56,7 @@ public class WorkerThread implements Runnable {
 
     private ConfigManager configManager;
     private EventLoopGroup backendEventGroup;
+    private String IP;
     private int port;
     private Model model;
 
@@ -141,6 +142,7 @@ public class WorkerThread implements Runnable {
     public WorkerThread(
             ConfigManager configManager,
             EventLoopGroup backendEventGroup,
+	    String IP,
             int port,
             int gpuId,
             Model model,
@@ -149,6 +151,7 @@ public class WorkerThread implements Runnable {
         this.workerId = String.valueOf(port); // Unique across all workers.
         this.configManager = configManager;
         this.backendEventGroup = backendEventGroup;
+	this.IP = IP;
         this.port = port;
         this.model = model;
         this.aggregator = aggregator;
@@ -299,7 +302,7 @@ public class WorkerThread implements Runnable {
 
         final int responseBufferSize = configManager.getMaxResponseSize();
         try {
-            Connector connector = new Connector(port);
+            Connector connector = new Connector(this.IP, port);
             Bootstrap b = new Bootstrap();
             b.group(backendEventGroup)
                     .channel(connector.getClientChannel())

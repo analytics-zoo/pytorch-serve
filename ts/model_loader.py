@@ -2,6 +2,7 @@
 Model loader.
 """
 import importlib
+import sys
 import json
 import logging
 import os
@@ -88,6 +89,7 @@ class TsModelLoader(ModelLoader):
         :return:
         """
         logging.debug("Loading model - working dir: %s", os.getcwd())
+        sys.path.append(model_dir)
         manifest_file = os.path.join(model_dir, "MAR-INF", "MANIFEST.json")
         manifest = None
         if os.path.exists(manifest_file):
@@ -198,3 +200,4 @@ class TsModelLoader(ModelLoader):
             )
 
         return model_service.handle, model_service.initialize
+

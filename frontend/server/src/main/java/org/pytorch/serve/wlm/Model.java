@@ -3,6 +3,8 @@ package org.pytorch.serve.wlm;
 import com.google.gson.JsonObject;
 import java.io.File;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -48,6 +50,7 @@ public class Model {
 
     // Per worker thread job queue. This separates out the control queue from data queue
     private ConcurrentMap<String, LinkedBlockingDeque<Job>> jobsDb;
+    private ConcurrentMap<List<String>, Integer> workerAddress;
 
     public Model(ModelArchive modelArchive, int queueSize) {
         this.modelArchive = modelArchive;
@@ -61,6 +64,7 @@ public class Model {
         modelVersionName =
                 new ModelVersionName(
                         this.modelArchive.getModelName(), this.modelArchive.getModelVersion());
+	workerAddress = new ConcurrentHashMap<>();
     }
 
     public JsonObject getModelState(boolean isDefaultVersion) {
@@ -123,6 +127,17 @@ public class Model {
 
     public void setMaxWorkers(int maxWorkers) {
         this.maxWorkers = maxWorkers;
+    }
+
+    public void setAddress(String IP, String Port) {
+	List<String> address = new ArrayList<>();
+	address.add(IP);
+	address.add(Port);
+	workerAddress.putIfAbsent(address, -1);
+    }
+
+    public ConcurrentMap<List<String>, Integer> getAddress() {
+	return workerAddress;
     }
 
     public int getBatchSize() {

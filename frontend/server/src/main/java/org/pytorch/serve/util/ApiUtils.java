@@ -206,6 +206,8 @@ public final class ApiUtils {
                 archive.getModelVersion(),
                 initialWorkers,
                 initialWorkers,
+		"",
+		"",
                 isSync,
                 true,
                 f -> {
@@ -219,6 +221,8 @@ public final class ApiUtils {
             String modelVersion,
             int minWorkers,
             int maxWorkers,
+	    String IP,
+	    String Port,
             boolean synchronous,
             boolean isInit,
             final Function<Void, Void> onError)
@@ -234,7 +238,7 @@ public final class ApiUtils {
         }
 
         CompletableFuture<Integer> future =
-                modelManager.updateModel(modelName, modelVersion, minWorkers, maxWorkers);
+                modelManager.updateModel(modelName, modelVersion, minWorkers, maxWorkers, IP, Port);
 
         StatusResponse statusResponse = new StatusResponse();
 

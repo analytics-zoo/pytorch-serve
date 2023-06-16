@@ -128,6 +128,28 @@ class ArgParser(object):
             help="Metrics configuration file",
         )
 
+        parser.add_argument(
+            "--frontend-ip",
+            dest="frontend_ip",
+            type=str,
+            help="IP of frontend",
+        )
+
+        parser.add_argument(
+            "--frontend-port",
+            dest="frontend_port",
+            type=str,
+            help="Port of Frontend Management",
+        )
+
+        parser.add_argument(
+            "--model-name",
+            dest="model_name",
+            type=str,
+            help="Model name.",
+        )
+
+
         return parser
 
     @staticmethod
