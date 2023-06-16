@@ -133,7 +133,12 @@ public class Model {
 	List<String> address = new ArrayList<>();
 	address.add(IP);
 	address.add(Port);
-	workerAddress.putIfAbsent(address, -1);
+        if (!workerAddress.containsKey(address)) {
+            workerAddress.put(address, -1);
+        }
+        else if (workerAddress.get(address) > 0) {
+            workerAddress.replace(address, -1);
+        }
     }
 
     public ConcurrentMap<List<String>, Integer> getAddress() {
