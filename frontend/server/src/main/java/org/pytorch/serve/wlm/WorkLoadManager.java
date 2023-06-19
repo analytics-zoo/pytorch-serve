@@ -251,7 +251,6 @@ public class WorkLoadManager {
                 if (maxGpu > 0) {
                     gpuId = gpuCounter.accumulateAndGet(maxGpu, (prev, maxGpuId) -> ++prev % maxGpuId);
                 }
-		logger.info("IP: {}, Port: {}", address.get(0), address.get(1));
 
 	        WorkerStateListener listener = new WorkerStateListener(future, 1);
 	        BatchAggregator aggregator = new BatchAggregator(model);

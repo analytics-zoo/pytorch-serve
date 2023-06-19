@@ -129,19 +129,26 @@ public class Model {
         this.maxWorkers = maxWorkers;
     }
 
-    public void setAddress(String IP, String Port) {
+    public void addWorkerAddress(String ip, String port) {
 	List<String> address = new ArrayList<>();
-	address.add(IP);
-	address.add(Port);
+	address.add(ip);
+	address.add(port);
+        //-1 means that the worker is not connected.
+        //0  means that the worker is connected.
+        //>0 means that the worker is disconnected and the times that frontend try to reconnect.
         if (!workerAddress.containsKey(address)) {
             workerAddress.put(address, -1);
         }
-        else if (workerAddress.get(address) > 0) {
+        else if (workerAddress.get(address) > 0) {//A disconnected worker may send request again.
             workerAddress.replace(address, -1);
         }
     }
 
-    public ConcurrentMap<List<String>, Integer> getAddress() {
+    public void setWorkerAddress(concurrentMap<List<String>, Integer> workerAddress) {
+        this.workerAddress = workerAddress;
+    }
+
+    public ConcurrentMap<List<String>, Integer> getWorkerAddress() {
 	return workerAddress;
     }
 

@@ -152,8 +152,8 @@ public class ManagementImpl extends ManagementAPIsServiceImplBase {
                             modelVersion,
                             minWorkers,
                             maxWorkers,
-			    "",
-			    "",
+			    null,
+			    null,
                             synchronous,
                             false,
                             null);
