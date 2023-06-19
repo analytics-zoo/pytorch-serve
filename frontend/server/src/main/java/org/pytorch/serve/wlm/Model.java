@@ -144,7 +144,7 @@ public class Model {
         }
     }
 
-    public void setWorkerAddress(concurrentMap<List<String>, Integer> workerAddress) {
+    public void setWorkerAddress(ConcurrentMap<List<String>, Integer> workerAddress) {
         this.workerAddress = workerAddress;
     }
 

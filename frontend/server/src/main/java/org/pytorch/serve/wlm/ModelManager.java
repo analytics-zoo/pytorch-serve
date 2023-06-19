@@ -412,7 +412,7 @@ public final class ModelManager {
         model.setMinWorkers(minWorkers);
         model.setMaxWorkers(maxWorkers);
 	if (ip != null && port != null) {
-	    model.setWorkerAddress(ip, port);
+	    model.addWorkerAddress(ip, port);
 	}
         logger.debug("updateModel: {}, count: {}", modelName, minWorkers);
 

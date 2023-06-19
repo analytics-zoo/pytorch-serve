@@ -239,7 +239,7 @@ public class WorkLoadManager {
             }
 
             int currentWorkers = threads.size();
-	    ConcurrentMap<List<String>, Integer> workerAddress = model.getAddress();
+	    ConcurrentMap<List<String>, Integer> workerAddress = model.getWorkerAddress();
 	    for (List<String> address : workerAddress.keySet()) {
                 int status = workerAddress.get(address);
 		if (status != -1) {
