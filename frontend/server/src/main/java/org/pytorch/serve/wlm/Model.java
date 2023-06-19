@@ -3,6 +3,8 @@ package org.pytorch.serve.wlm;
 import com.google.gson.JsonObject;
 import java.io.File;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -48,6 +50,7 @@ public class Model {
 
     // Per worker thread job queue. This separates out the control queue from data queue
     private ConcurrentMap<String, LinkedBlockingDeque<Job>> jobsDb;
+    private ConcurrentMap<List<String>, Integer> workerAddress;
 
     public Model(ModelArchive modelArchive, int queueSize) {
         this.modelArchive = modelArchive;
@@ -61,6 +64,7 @@ public class Model {
         modelVersionName =
                 new ModelVersionName(
                         this.modelArchive.getModelName(), this.modelArchive.getModelVersion());
+	workerAddress = new ConcurrentHashMap<>();
     }
 
     public JsonObject getModelState(boolean isDefaultVersion) {
@@ -123,6 +127,29 @@ public class Model {
 
     public void setMaxWorkers(int maxWorkers) {
         this.maxWorkers = maxWorkers;
+    }
+
+    public void addWorkerAddress(String ip, String port) {
+	List<String> address = new ArrayList<>();
+	address.add(ip);
+	address.add(port);
+        //-1 means that the worker is not connected.
+        //0  means that the worker is connected.
+        //>0 means that the worker is disconnected and the times that frontend try to reconnect.
+        if (!workerAddress.containsKey(address)) {
+            workerAddress.put(address, -1);
+        }
+        else if (workerAddress.get(address) > 0) {//A disconnected worker may send request again.
+            workerAddress.replace(address, -1);
+        }
+    }
+
+    public void setWorkerAddress(ConcurrentMap<List<String>, Integer> workerAddress) {
+        this.workerAddress = workerAddress;
+    }
+
+    public ConcurrentMap<List<String>, Integer> getWorkerAddress() {
+	return workerAddress;
     }
 
     public int getBatchSize() {

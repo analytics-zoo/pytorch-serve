@@ -39,13 +39,17 @@ public class Connector {
 
     public Connector(int port) {
         //this(port, useNativeIo && (Epoll.isAvailable() || KQueue.isAvailable()));
-        this(port, false); //Force to use TCP.
+        this("127.0.0.1", port, false); //Force to use TCP.
     }
 
-    private Connector(int port, boolean uds) {
+    public Connector(String bindIp, int port) {
+	this(bindIp, port, false);
+    }
+
+    private Connector(String bindIp, int port, boolean uds) {
+	this.bindIp = bindIp;
         this.port = port;
         this.uds = uds;
-        bindIp = System.getProperty("Backends_IP");
         if (uds) {
             //bindIp = "";
             socketPath = System.getProperty("java.io.tmpdir") + "/.ts.sock." + port;

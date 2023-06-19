@@ -17,6 +17,7 @@ from ts.metrics.metric_cache_yaml_impl import MetricsCacheYamlImpl
 from ts.model_loader import ModelLoaderFactory
 from ts.protocol.otf_message_handler import create_load_model_response, retrieve_msg
 
+os.environ["MPLCONFIGDIR"]="/tmp/matplotlib"
 MAX_FAILURE_THRESHOLD = 5
 SOCKET_ACCEPT_TIMEOUT = 3000.0
 DEBUG = False
@@ -181,6 +182,11 @@ class TorchModelServiceWorker(object):
         logging.info("Python runtime: %s", platform.python_version())
 
         while True:
+            import requests
+            url = "http://" + frontend_ip + ":" + frontend_port + "/models/" + model_name + "?IP=" + host + "&PORT=" + port
+            response = requests.put(url)
+            data = response.text
+
             (cl_socket, _) = self.sock.accept()
             # workaround error(35, 'Resource temporarily unavailable') on OSX
             cl_socket.setblocking(True)
@@ -207,6 +213,10 @@ if __name__ == "__main__":
         host = args.host
         port = args.port
         metrics_config = args.metrics_config
+        frontend_ip = args.frontend_ip
+        frontend_port = args.frontend_port
+        model_name = args.model_name
+
 
         if BENCHMARK:
             import cProfile
@@ -234,3 +244,4 @@ if __name__ == "__main__":
             os.remove(socket_name)
 
     sys.exit(1)
+

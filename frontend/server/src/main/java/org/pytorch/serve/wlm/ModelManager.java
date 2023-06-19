@@ -386,6 +386,8 @@ public final class ModelManager {
                 versionId,
                 model.getMinWorkers(),
                 model.getMaxWorkers(),
+		null,
+		null,
                 isStartup,
                 false);
     }
@@ -395,6 +397,8 @@ public final class ModelManager {
             String versionId,
             int minWorkers,
             int maxWorkers,
+	    String ip,
+	    String port,
             boolean isStartup,
             boolean isCleanUp)
             throws ModelVersionNotFoundException {
@@ -407,6 +411,9 @@ public final class ModelManager {
 
         model.setMinWorkers(minWorkers);
         model.setMaxWorkers(maxWorkers);
+	if (ip != null && port != null) {
+	    model.addWorkerAddress(ip, port);
+	}
         logger.debug("updateModel: {}, count: {}", modelName, minWorkers);
 
         return wlm.modelChanged(model, isStartup, isCleanUp);
@@ -424,7 +431,13 @@ public final class ModelManager {
     public CompletableFuture<Integer> updateModel(
             String modelName, String versionId, int minWorkers, int maxWorkers)
             throws ModelVersionNotFoundException {
-        return updateModel(modelName, versionId, minWorkers, maxWorkers, false, false);
+        return updateModel(modelName, versionId, minWorkers, maxWorkers, null, null, false, false);
+    }
+
+    public CompletableFuture<Integer> updateModel(
+            String modelName, String versionId, int minWorkers, int maxWorkers, String ip, String port)
+            throws ModelVersionNotFoundException {
+        return updateModel(modelName, versionId, minWorkers, maxWorkers, ip, port, false, false);
     }
 
     public Map<String, Model> getDefaultModels(boolean skipFuntions) {

@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -96,7 +97,7 @@ public class WorkLoadManager {
         return configManager.isCPULauncherEnabled() && currentWorkers > 0;
     }
 
-    public CompletableFuture<Integer> modelChanged(
+/*    public CompletableFuture<Integer> modelChanged(
             Model model, boolean isStartup, boolean isCleanUp) {
         synchronized (model.getModelVersionName()) {
             boolean isSnapshotSaved = false;
@@ -213,6 +214,62 @@ public class WorkLoadManager {
             threads.add(thread);
             threadPool.submit(thread);
         }
+    }
+*/
+    public CompletableFuture<Integer> modelChanged(
+            Model model, boolean isStartup, boolean isCleanUp) {
+        synchronized (model.getModelVersionName()) {
+            int minWorker = model.getMinWorkers();
+            boolean isSnapshotSaved = false;
+            CompletableFuture<Integer> future = new CompletableFuture<>();
+            List<WorkerThread> threads;
+	    if (minWorker == 0) {
+                threads = workers.remove(model.getModelVersionName());
+                if (threads == null) {
+                    future.complete(HttpURLConnection.HTTP_OK);
+                    if (!isStartup && !isCleanUp && !model.isWorkflowModel()) {
+                        SnapshotManager.getInstance().saveSnapshot();
+                    }
+                    return future;
+                }
+            } else {
+                threads =
+                        workers.computeIfAbsent(
+                                model.getModelVersionName(), k -> new ArrayList<>());
+            }
+
+            int currentWorkers = threads.size();
+	    ConcurrentMap<List<String>, Integer> workerAddress = model.getWorkerAddress();
+	    for (List<String> address : workerAddress.keySet()) {
+                int status = workerAddress.get(address);
+		if (status != -1) {
+		    continue;
+		}
+		int maxGpu = configManager.getNumberOfGpu();
+		int gpuId = -1;
+  
+                if (maxGpu > 0) {
+                    gpuId = gpuCounter.accumulateAndGet(maxGpu, (prev, maxGpuId) -> ++prev % maxGpuId);
+                }
+
+	        WorkerStateListener listener = new WorkerStateListener(future, 1);
+	        BatchAggregator aggregator = new BatchAggregator(model);
+                WorkerThread thread =
+                        new WorkerThread(
+                                configManager,
+                                backendGroup,
+                                address.get(0),
+				Integer.parseInt(address.get(1)),
+                                gpuId,
+                                model,
+                                aggregator,
+                                listener);
+                threads.add(thread);
+                threadPool.submit(thread);
+		workerAddress.replace(address, 0);
+	    }
+	    return future;
+	}
     }
 
     public void scheduleAsync(Runnable r) {

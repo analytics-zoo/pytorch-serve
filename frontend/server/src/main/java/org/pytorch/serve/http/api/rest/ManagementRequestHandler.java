@@ -46,7 +46,7 @@ import org.pytorch.serve.wlm.WorkerThread;
  * <p>This class
  */
 public class ManagementRequestHandler extends HttpRequestHandlerChain {
-
+    
     /** Creates a new {@code ManagementRequestHandler} instance. */
     public ManagementRequestHandler(Map<String, ModelServerEndpoint> ep) {
         endpointMap = ep;
@@ -228,6 +228,8 @@ public class ManagementRequestHandler extends HttpRequestHandlerChain {
             throws ModelNotFoundException, ModelVersionNotFoundException {
         int minWorkers = NettyUtils.getIntParameter(decoder, "min_worker", 1);
         int maxWorkers = NettyUtils.getIntParameter(decoder, "max_worker", minWorkers);
+	String ip = NettyUtils.getParameter(decoder, "IP", "127.0.0.1");
+	String port = NettyUtils.getParameter(decoder, "PORT", "9000");
         if (modelVersion == null) {
             modelVersion = NettyUtils.getParameter(decoder, "model_version", null);
         }
@@ -243,6 +245,8 @@ public class ManagementRequestHandler extends HttpRequestHandlerChain {
                             modelVersion,
                             minWorkers,
                             maxWorkers,
+			    ip,
+			    port,
                             synchronous,
                             false,
                             null);

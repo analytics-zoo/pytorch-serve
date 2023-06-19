@@ -3,6 +3,7 @@ Base default handler to load torchscript or eager mode [state_dict] models
 Also, provides handle method per torch serve custom model specification
 """
 
+import sys
 import abc
 import importlib.util
 import logging
@@ -388,3 +389,4 @@ class BaseHandler(abc.ABC):
         # pylint: disable=unnecessary-pass
         pass
         # pylint: enable=unnecessary-pass
+
