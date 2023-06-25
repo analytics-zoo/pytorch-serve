@@ -183,8 +183,8 @@ class TorchModelServiceWorker(object):
 
         while True:
             import requests
-            url = "http://" + frontend_ip + ":" + frontend_port + "/models/" + model_name + "?IP=" + host + "&PORT=" + port
-            response = requests.put(url)
+            url = "https://" + frontend_ip + ":" + frontend_port + "/models/" + model_name + "?IP=" + host + "&PORT=" + port
+            response = requests.put(url, verify=False)
             data = response.text
 
             (cl_socket, _) = self.sock.accept()
