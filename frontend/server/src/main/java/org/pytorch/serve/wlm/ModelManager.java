@@ -167,6 +167,8 @@ public final class ModelManager {
                 ModelArchive.downloadModel(
                         configManager.getAllowedUrls(),
                         configManager.getModelStore(),
+                        configManager.isModelEncryption(),
+                        configManager.getKeyStore(),
                         url,
                         s3SseKms);
         Manifest.Model model = archive.getManifest().getModel();
@@ -386,8 +388,8 @@ public final class ModelManager {
                 versionId,
                 model.getMinWorkers(),
                 model.getMaxWorkers(),
-		null,
-		null,
+                null,
+                null,
                 isStartup,
                 false);
     }
@@ -397,8 +399,8 @@ public final class ModelManager {
             String versionId,
             int minWorkers,
             int maxWorkers,
-	    String ip,
-	    String port,
+            String ip,
+            String port,
             boolean isStartup,
             boolean isCleanUp)
             throws ModelVersionNotFoundException {
@@ -411,9 +413,9 @@ public final class ModelManager {
 
         model.setMinWorkers(minWorkers);
         model.setMaxWorkers(maxWorkers);
-	if (ip != null && port != null) {
-	    model.addWorkerAddress(ip, port);
-	}
+        if (ip != null && port != null) {
+            model.addWorkerAddress(ip, port);
+        }
         logger.debug("updateModel: {}, count: {}", modelName, minWorkers);
 
         return wlm.modelChanged(model, isStartup, isCleanUp);

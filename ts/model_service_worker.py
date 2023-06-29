@@ -183,9 +183,14 @@ class TorchModelServiceWorker(object):
 
         while True:
             import requests
-            url = "https://" + frontend_ip + ":" + frontend_port + "/models/" + model_name + "?IP=" + host + "&PORT=" + port
-            response = requests.put(url, verify=False)
-            data = response.text
+            # Try http fist
+            url = "http://" + frontend_ip + ":" + frontend_port + "/models/" + model_name + "?IP=" + host + "&PORT=" + port
+            response = requests.put(url)
+
+            # If http get false status_code, then try https
+            if response.status_code < 200 or response.status_code >=300 :
+                url = "https://" + frontend_ip + ":" + frontend_port + "/models/" + model_name + "?IP=" + host + "&PORT=" + port
+                response = requests.put(url, verify=False)
 
             (cl_socket, _) = self.sock.accept()
             # workaround error(35, 'Resource temporarily unavailable') on OSX

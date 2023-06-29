@@ -1,8 +1,18 @@
 package org.pytorch.serve.archive.model;
 
+import javax.crypto.Cipher;
+import javax.crypto.CipherInputStream;
+import javax.crypto.spec.SecretKeySpec;
+import javax.crypto.NoSuchPaddingException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.util.List;
@@ -37,11 +47,28 @@ public class ModelArchive {
             List<String> allowedUrls, String modelStore, String url)
             throws ModelException, FileAlreadyExistsException, IOException,
                     DownloadArchiveException {
-        return downloadModel(allowedUrls, modelStore, url, false);
+        return downloadModel(allowedUrls, modelStore, false, null, url, false);
+    }
+
+    public static CipherInputStream decryptFile(InputStream inputStream, String keyStore)
+            throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IOException {
+            try {
+                byte[] key = Files.readAllBytes(Path.of(keyStore));
+
+                Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+                SecretKeySpec secretKeySpec = new SecretKeySpec(key, "AES");
+                cipher.init(Cipher.DECRYPT_MODE, secretKeySpec);
+
+                CipherInputStream cipherInputStream = new CipherInputStream(inputStream, cipher);
+                return cipherInputStream;
+            } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IOException e) {
+                e.printStackTrace();
+                throw e;
+            }
     }
 
     public static ModelArchive downloadModel(
-            List<String> allowedUrls, String modelStore, String url, boolean s3SseKmsEnabled)
+            List<String> allowedUrls, String modelStore, boolean isModelEncryption, String keyStore, String url, boolean s3SseKmsEnabled)
             throws ModelException, FileAlreadyExistsException, IOException,
                     DownloadArchiveException {
         if (modelStore == null) {
@@ -67,8 +94,18 @@ public class ModelArchive {
 
         if (modelLocation.isFile()) {
             try (InputStream is = Files.newInputStream(modelLocation.toPath())) {
-                File unzipDir = ZipUtils.unzip(is, null, "models");
-                return load(url, unzipDir, true);
+                try {
+                    File unzipDir;
+                    if (isModelEncryption && keyStore != null) {
+                        CipherInputStream cis =  decryptFile(is, keyStore);
+                        unzipDir = ZipUtils.unzip(cis, null, "models");
+                    }
+                    else
+                        unzipDir = ZipUtils.unzip(is, null, "models");
+                    return load(url, unzipDir, true);
+                } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IOException e) {
+                    throw new ModelNotFoundException("Model not found at: " + url);
+                }
             }
         }
 
