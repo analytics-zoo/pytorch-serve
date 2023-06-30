@@ -100,6 +100,10 @@ public final class ConfigManager {
     private static final String TS_INITIAL_WORKER_PORT = "initial_worker_port";
     private static final String TS_WORKFLOW_STORE = "workflow_store";
 
+    // Model encryption
+    private static final String TS_MODEL_ENCRYPTION = "model_encryption";
+    private static final String TS_KEY_STORE = "key_store";
+
     // Configuration which are not documented or enabled through environment variables
     private static final String USE_NATIVE_IO = "use_native_io";
     private static final String IO_RATIO = "io_ratio";
@@ -322,6 +326,14 @@ public final class ConfigManager {
 
     public boolean isGRPCSSLEnabled() {
         return Boolean.parseBoolean(getProperty(TS_ENABLE_GRPC_SSL, "false"));
+    }
+
+    public boolean isModelEncryption() {
+        return Boolean.parseBoolean(getProperty(TS_MODEL_ENCRYPTION, "false"));
+    }
+
+    public String getKeyStore() {
+        return getCanonicalPath(prop.getProperty(TS_KEY_STORE));
     }
 
     public boolean getPreferDirectBuffer() {

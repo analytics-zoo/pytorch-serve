@@ -11,6 +11,11 @@ import tempfile
 import zipfile
 from io import BytesIO
 
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import padding
+
+
 from .manifest_components.manifest import Manifest
 from .manifest_components.model import Model
 from .model_archiver_error import ModelArchiverError
@@ -176,7 +181,7 @@ class ModelExportUtils(object):
 
     @staticmethod
     def archive(
-        export_file, model_name, model_path, manifest, archive_format="default"
+        export_file, model_name, model_path, manifest, archive_format="default", model_encryption=False, key_store=None
     ):
         """
         Create a model-archive
@@ -185,6 +190,8 @@ class ModelExportUtils(object):
         :param model_name:
         :param model_path
         :param manifest:
+        :param model_encrytion: If the model need to be encrypted
+        :param key_store: The path of key
         :return:
         """
         mar_path = ModelExportUtils.get_archive_export_path(
@@ -221,6 +228,23 @@ class ModelExportUtils(object):
                     )
                     # Write the manifest here now as a json
                     z.writestr(os.path.join(MAR_INF, MANIFEST_FILE_NAME), manifest)
+
+            # Encrypt MAR
+            if model_encryption and key_store != None and archive_format != "no-archive":
+                with open(key_store, 'rb') as key_file:
+                    key = key_file.read()
+                with open(mar_path, "rb") as plain_file:
+                    plain_text = plain_file.read()
+
+                cipher = Cipher(algorithms.AES(key), modes.ECB(), backend=default_backend())
+                encryptor = cipher.encryptor()
+                padder = padding.PKCS7(128).padder()
+                padded_data = padder.update(plain_text) + padder.finalize()
+                cipher_text = encryptor.update(padded_data) + encryptor.finalize()
+
+                with open(mar_path, "wb") as cipher_file:
+                    cipher_file.write(cipher_text)
+
         except IOError:
             logging.error(
                 'Failed to save the model-archive to model-path "%s". '

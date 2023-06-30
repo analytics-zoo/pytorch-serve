@@ -143,4 +143,22 @@ class ArgParser(object):
             " packages.",
         )
 
+        parser_export.add_argument(
+            "-e",
+            "--model-encryption",
+            required=False,
+            action="store_true",
+            help="If the model needs to be encrypted",
+        )
+
+        parser_export.add_argument(
+            "--key-store",
+            required=False,
+            type=str,
+            default=None,
+            help="Path to key",
+        )
+
+
+
         return parser_export

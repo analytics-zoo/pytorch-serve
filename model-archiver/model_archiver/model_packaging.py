@@ -43,7 +43,7 @@ def package_model(args, manifest):
 
         # Step 2 : Zip 'em all up
         ModelExportUtils.archive(
-            export_file_path, model_name, model_path, manifest, args.archive_format
+            export_file_path, model_name, model_path, manifest, args.archive_format, args.model_encryption, args.key_store
         )
         shutil.rmtree(model_path)
         logging.info(
