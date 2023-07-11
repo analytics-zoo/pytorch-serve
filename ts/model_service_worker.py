@@ -11,6 +11,7 @@ import platform
 import socket
 import sys
 import uuid
+import time
 
 from ts.arg_parser import ArgParser
 from ts.metrics.metric_cache_yaml_impl import MetricsCacheYamlImpl
@@ -180,17 +181,20 @@ class TorchModelServiceWorker(object):
         logging.info("[PID]%d", os.getpid())
         logging.info("Torch worker started.")
         logging.info("Python runtime: %s", platform.python_version())
-
         while True:
             import requests
-            # Try http fist
-            url = "http://" + frontend_ip + ":" + frontend_port + "/models/" + model_name + "?IP=" + host + "&PORT=" + port
-            response = requests.put(url)
+            while True:
+                try:
+                    url = "http://" + frontend_ip + ":" + frontend_port + "/models/" + model_name + "?IP=" + host + "&PORT=" + port
+                    response = requests.put(url)
+                    if response.status_code < 200 or response.status_code >=300:
+                        url = "https://" + frontend_ip + ":" + frontend_port + "/models/" + model_name + "?IP=" + host + "&PORT=" + port
+                        response = requests.put(url, verify=False)
+                    break
+                except requests.exceptions.ConnectionError as e:
+                    print("Frontend is not ready. Retry after 30s.")
+                    time.sleep(30)
 
-            # If http get false status_code, then try https
-            if response.status_code < 200 or response.status_code >=300 :
-                url = "https://" + frontend_ip + ":" + frontend_port + "/models/" + model_name + "?IP=" + host + "&PORT=" + port
-                response = requests.put(url, verify=False)
 
             (cl_socket, _) = self.sock.accept()
             # workaround error(35, 'Resource temporarily unavailable') on OSX
