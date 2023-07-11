@@ -22,6 +22,7 @@ def package_model(args, manifest):
     extra_files = args.extra_files
     export_file_path = args.export_path
     requirements_file = args.requirements_file
+    encrypted_files = args.encrypted_files
 
     try:
         ModelExportUtils.validate_inputs(model_name, export_file_path)
@@ -37,14 +38,20 @@ def package_model(args, manifest):
             "handler": handler,
             "extra_files": extra_files,
             "requirements-file": requirements_file,
+            "encrypted_files": encrypted_files,
         }
 
         model_path = ModelExportUtils.copy_artifacts(model_name, **artifact_files)
 
         # Step 2 : Zip 'em all up
-        ModelExportUtils.archive(
-            export_file_path, model_name, model_path, manifest, args.archive_format, args.model_encryption, args.key_store
-        )
+        ModelExportUtils.archive(export_file_path,
+                                 model_name,
+                                 model_path,
+                                 manifest,
+                                 args.archive_format,
+                                 model_encryption=args.model_encryption,
+                                 encryption_key=args.encryption_key,
+                                 decryption_key=args.decryption_key)
         shutil.rmtree(model_path)
         logging.info(
             "Successfully exported model %s to file %s", model_name, export_file_path
@@ -68,3 +75,4 @@ def generate_model_archive():
 
 if __name__ == "__main__":
     generate_model_archive()
+
