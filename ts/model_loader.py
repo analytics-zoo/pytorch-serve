@@ -89,16 +89,18 @@ class TsModelLoader(ModelLoader):
         :return:
         """
         logging.debug("Loading model - working dir: %s", os.getcwd())
+        """
         sys.path.append(model_dir)
         manifest_file = os.path.join(model_dir, "MAR-INF", "MANIFEST.json")
         manifest = None
         if os.path.exists(manifest_file):
             with open(manifest_file) as f:
-                manifest = json.load(f)
+                manifest = json.load(f)"""
+        manifest = json.loads(model_dir['MAR-INF/MANIFEST.json'].read())
 
         function_name = None
         try:
-            module, function_name = self._load_handler_file(handler)
+            module, function_name = self._load_handler_file(handler, model_dir[handler])
         except ImportError:
             module = self._load_default_handler(handler)
 
@@ -154,13 +156,18 @@ class TsModelLoader(ModelLoader):
 
         return service
 
-    def _load_handler_file(self, handler):
+    def _load_handler_file(self, handler, handler_buf):
         temp = handler.split(":", 1)
         module_name = temp[0]
         function_name = None if len(temp) == 1 else temp[1]
         if module_name.endswith(".py"):
             module_name = module_name[:-3]
         module_name = module_name.split("/")[-1]
+        module_spec = importlib.util.spec_from_loader(module_name, loader=None)
+        module = importlib.util.module_from_spec(module_spec)
+        exec(handler_buf.read(), module.__dict__)
+        module.__name__ = module_name
+        sys.modules[module_name] = module
         module = importlib.import_module(module_name)
         return module, function_name
 

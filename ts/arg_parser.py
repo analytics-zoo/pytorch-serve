@@ -149,6 +149,27 @@ class ArgParser(object):
             help="Model name.",
         )
 
+        parser.add_argument(
+            "--model-file",
+            dest="model_file",
+            type=str,
+            help="Path to the model file.",
+        )
+
+        parser.add_argument(
+            "-d",
+            "--model-decryption",
+            dest="model_decryption",
+            action="store_true",
+            help="Whether the model needs to be decrypted.",
+        )
+
+        parser.add_argument(
+            "--decryption-key",
+            dest="decryption_key",
+            type=str,
+            help="Path to the key for decrypting MAR.",
+        )
 
         return parser
 
@@ -156,3 +177,4 @@ class ArgParser(object):
     def extract_args(args=None):
         parser = ArgParser.ts_parser()
         return parser.parse_args(args) if args else parser.parse_args()
+
