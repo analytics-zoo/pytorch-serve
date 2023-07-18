@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParseException;
 import java.io.File;
+import java.io.InputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -33,6 +34,15 @@ public final class ArchiveUtils {
         try (Reader r =
                 new InputStreamReader(
                         Files.newInputStream(file.toPath()), StandardCharsets.UTF_8)) {
+            return GSON.fromJson(r, type);
+        } catch (JsonParseException e) {
+            throw new InvalidModelException("Failed to parse signature.json.", e);
+        }
+    }
+
+    public static <T> T readInputStream(InputStream is, Class<T> type)
+            throws InvalidModelException, IOException {
+        try (Reader r = new InputStreamReader(is)) {
             return GSON.fromJson(r, type);
         } catch (JsonParseException e) {
             throw new InvalidModelException("Failed to parse signature.json.", e);

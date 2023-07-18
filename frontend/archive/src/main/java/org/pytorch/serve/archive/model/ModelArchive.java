@@ -95,14 +95,16 @@ public class ModelArchive {
         if (modelLocation.isFile()) {
             try (InputStream is = Files.newInputStream(modelLocation.toPath())) {
                 try {
-                    File unzipDir;
                     if (isModelEncryption && keyStore != null) {
-                        CipherInputStream cis =  decryptFile(is, keyStore);
-                        unzipDir = ZipUtils.unzip(cis, null, "models");
+			CipherInputStream cis =  decryptFile(is, keyStore);
+                        InputStream unzipStream = ZipUtils.getManifest(cis);
+			return load(url, unzipStream, true, modelStore);
                     }
-                    else
+                    else {
+			File unzipDir;
                         unzipDir = ZipUtils.unzip(is, null, "models");
-                    return load(url, unzipDir, true);
+                        return load(url, unzipDir, true);
+		    }
                 } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IOException e) {
                     throw new ModelNotFoundException("Model not found at: " + url);
                 }
@@ -144,6 +146,27 @@ public class ModelArchive {
             }
         }
     }
+
+    private static ModelArchive load(String url, InputStream is, boolean extracted, String dir)
+            throws InvalidModelException, IOException {
+        boolean failed = true;
+        try {
+            Manifest manifest = null;
+            if (is != null) {
+                manifest = ArchiveUtils.readInputStream(is, Manifest.class);
+            } else {
+                manifest = new Manifest();
+            }
+
+            failed = false;
+            return new ModelArchive(manifest, url, new File(dir), extracted);
+        } finally {
+            if (extracted && failed) {
+                //FileUtils.deleteQuietly(dir);
+            }
+        }
+    }
+
 
     public void validate() throws InvalidModelException {
         Manifest.Model model = manifest.getModel();
