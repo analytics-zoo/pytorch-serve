@@ -3,6 +3,8 @@ package org.pytorch.serve.archive.utils;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.FileInputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -91,5 +93,34 @@ public final class ZipUtils {
         FileUtils.moveDirectory(tmp, dir);
 
         return dir;
+    }
+
+    public static InputStream getManifest(InputStream is) throws IOException {
+	MessageDigest md;
+        try {
+            md = MessageDigest.getInstance("SHA1");
+        } catch (NoSuchAlgorithmException e) {
+            throw new AssertionError(e);
+        }
+        is = new DigestInputStream(is, md);
+	try (ZipInputStream zis = new ZipInputStream(is)) {
+	    ZipEntry entry;
+	    while ((entry = zis.getNextEntry()) != null) {
+                String name = entry.getName();
+		if (!name.equals("MAR-INF/MANIFEST.json"))
+		    continue;
+
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+                byte[] buffer = new byte[1024];
+                int bytesRead;
+                while ((bytesRead = zis.read(buffer)) != -1) {
+                    os.write(buffer, 0, bytesRead);
+                }
+
+                InputStream ris = new ByteArrayInputStream(os.toByteArray());
+		return ris;
+            }
+	    return null;
+        }
     }
 }

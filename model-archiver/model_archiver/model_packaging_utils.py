@@ -4,6 +4,7 @@ Helper utils for Model Export tool
 
 import logging
 import os
+import io
 import re
 import shutil
 import tarfile
@@ -14,6 +15,8 @@ from io import BytesIO
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import padding
+
+from encryption import encryption
 
 
 from .manifest_components.manifest import Manifest
@@ -148,9 +151,11 @@ class ModelExportUtils(object):
         :return:
         """
         model_path = os.path.join(tempfile.gettempdir(), model_name)
+        encrypted_path = os.path.join(model_path, "encrypted_files")
         if os.path.exists(model_path):
             shutil.rmtree(model_path)
         ModelExportUtils.make_dir(model_path)
+        ModelExportUtils.make_dir(encrypted_path)
         for file_type, path in kwargs.items():
             if path:
                 if file_type == "handler":
@@ -164,7 +169,7 @@ class ModelExportUtils(object):
                     for file in path.split(","):
                         if os.path.isfile(file):
                             shutil.copy2(file, model_path)
-                        elif os.path.isdir(file) and file != model_path:
+                        elif os.path.isdir(file) and file != model_path and file != encrypted_path:
                             for item in os.listdir(file):
                                 src = os.path.join(file, item)
                                 dst = os.path.join(model_path, item)
@@ -174,6 +179,23 @@ class ModelExportUtils(object):
                                     shutil.copytree(src, dst, False, None)
                         else:
                             raise ValueError(f"Invalid extra file given {file}")
+
+                elif file_type == "encrypted_files":
+                    for file in path.split(","):
+                        if os.path.isfile(file):
+
+                            shutil.copy2(file, encrypted_path)
+                        elif os.path.isdir(file) and file != model_path and file != encrpyted_path:
+                            for item in os.listdir(file):
+                                src = os.path.join(file, item)
+                                dst = os.path.join(encrpyted_path, item)
+                                if os.path.isfile(src):
+                                    shutil.copy2(src, dst)
+                                elif os.path.isdir(src):
+                                    shutil.copytree(src, dst, False, None)
+                        else:
+                            raise ValueError(f"Invalid extra file given {file}")
+
                 else:
                     shutil.copy(path, model_path)
 
@@ -181,7 +203,7 @@ class ModelExportUtils(object):
 
     @staticmethod
     def archive(
-        export_file, model_name, model_path, manifest, archive_format="default", model_encryption=False, key_store=None
+        export_file, model_name, model_path, manifest, archive_format="default", model_encryption=False, encryption_key=None, decryption_key=None
     ):
         """
         Create a model-archive
@@ -194,14 +216,18 @@ class ModelExportUtils(object):
         :param key_store: The path of key
         :return:
         """
-        mar_path = ModelExportUtils.get_archive_export_path(
-            export_file, model_name, archive_format
-        )
+        # If MAR should be encrypted, we save it to memory files first.
+        if model_encryption :
+            mar_path = io.BytesIO()
+        else :
+            mar_path = ModelExportUtils.get_archive_export_path(
+                export_file, model_name, archive_format
+            )
         try:
             if archive_format == "tgz":
                 with tarfile.open(mar_path, "w:gz") as z:
                     ModelExportUtils.archive_dir(
-                        model_path, z, archive_format, model_name
+                        model_path, z, archive_format, model_name, decryption_key
                     )
                     # Write the manifest here now as a json
                     tar_manifest = tarfile.TarInfo(
@@ -214,7 +240,7 @@ class ModelExportUtils(object):
                 if model_path != mar_path:
                     # Copy files to export path if
                     ModelExportUtils.archive_dir(
-                        model_path, mar_path, archive_format, model_name
+                        model_path, mar_path, archive_format, model_name, decryption_key
                     )
                 # Write the MANIFEST in place
                 manifest_path = os.path.join(mar_path, MAR_INF)
@@ -224,17 +250,16 @@ class ModelExportUtils(object):
             else:
                 with zipfile.ZipFile(mar_path, "w", zipfile.ZIP_DEFLATED) as z:
                     ModelExportUtils.archive_dir(
-                        model_path, z, archive_format, model_name
+                        model_path, z, archive_format, model_name, decryption_key
                     )
                     # Write the manifest here now as a json
                     z.writestr(os.path.join(MAR_INF, MANIFEST_FILE_NAME), manifest)
 
             # Encrypt MAR
-            if model_encryption and key_store != None and archive_format != "no-archive":
-                with open(key_store, 'rb') as key_file:
+            if model_encryption and encryption_key != None and archive_format != "no-archive":
+                with open(encryption_key, 'rb') as key_file:
                     key = key_file.read()
-                with open(mar_path, "rb") as plain_file:
-                    plain_text = plain_file.read()
+                plain_text = mar_path.getvalue()
 
                 cipher = Cipher(algorithms.AES(key), modes.ECB(), backend=default_backend())
                 encryptor = cipher.encryptor()
@@ -242,6 +267,11 @@ class ModelExportUtils(object):
                 padded_data = padder.update(plain_text) + padder.finalize()
                 cipher_text = encryptor.update(padded_data) + encryptor.finalize()
 
+                mar_path.close()
+
+                mar_path = ModelExportUtils.get_archive_export_path(
+                    export_file, model_name, archive_format
+                )
                 with open(mar_path, "wb") as cipher_file:
                     cipher_file.write(cipher_text)
 
@@ -257,7 +287,7 @@ class ModelExportUtils(object):
             raise
 
     @staticmethod
-    def archive_dir(path, dst, archive_format, model_name):
+    def archive_dir(path, dst, archive_format, model_name, decryption_key=None):
 
         """
         This method zips the dir and filters out some files based on a expression
@@ -269,6 +299,8 @@ class ModelExportUtils(object):
         """
         unwanted_dirs = {"__MACOSX", "__pycache__"}
 
+        encryption_path = os.path.join(path, "encrypted_files")
+
         for root, directories, files in os.walk(path):
             # Filter directories
             directories[:] = [
@@ -276,11 +308,29 @@ class ModelExportUtils(object):
                 for d in directories
                 if ModelExportUtils.directory_filter(d, unwanted_dirs)
             ]
+
             for f in files:
                 file_path = os.path.join(root, f)
+                file = file_path
+                if encryption_path in root:
+                    with open(decryption_key, 'rb') as key_file:
+                        key = key_file.read()
+                    decrypted_buf = io.BytesIO()
+                    decryptor = encryption._buf_operator(key)
+                    with encryption._open_file_or_buffer(file_path, 'rb') as cipher_file:
+                        if encryption._is_path(file_path):
+                            buf = io.BytesIO(cipher_file.read())
+                            decryptor.decrypt_buffer(buf, decrypted_buf)
+                            buf.close()
+                        else:
+                            decryptor.decrypt_buffer(f, decrpyted_buf)
+                    decrypted_buf.seek(0)
+                    file = decrypted_buf
+                    file_path = file_path.replace("encrypted_files", "")
+
                 if archive_format == "tgz":
                     dst.add(
-                        file_path,
+                        file,
                         arcname=os.path.join(
                             model_name, os.path.relpath(file_path, path)
                         ),
@@ -290,9 +340,12 @@ class ModelExportUtils(object):
                         os.path.join(dst, os.path.relpath(file_path, path))
                     )
                     ModelExportUtils.make_dir(dst_dir)
-                    shutil.copy(file_path, dst_dir)
+                    shutil.copy(file, dst_dir)
                 else:
-                    dst.write(file_path, os.path.relpath(file_path, path))
+                    if encryption_path in root:
+                        dst.writestr(os.path.relpath(file_path, path), file.read())
+                    else:
+                        dst.write(file, os.path.relpath(file_path, path))
 
     @staticmethod
     def directory_filter(directory, unwanted_dirs):
@@ -349,3 +402,4 @@ class ModelExportUtils(object):
                 "Given export-path {} is not a directory. "
                 "Point to a valid export-path directory.".format(export_path)
             )
+

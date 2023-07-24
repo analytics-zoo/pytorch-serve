@@ -152,13 +152,28 @@ class ArgParser(object):
         )
 
         parser_export.add_argument(
-            "--key-store",
+            "--encryption-key",
             required=False,
             type=str,
             default=None,
-            help="Path to key",
+            help="Path to key for encrypting MAR",
         )
 
+        parser_export.add_argument(
+            "--decryption-key",
+            required=False,
+            type=str,
+            default=None,
+            help="Path to key for decrypting model and other files",
+        )
 
+        parser_export.add_argument(
+            "--encrypted-files",
+            required=False,
+            type=str,
+            default=None,
+            help="Encrypted files that need to be decrypted by fernet with decryption-key",
+        )
 
         return parser_export
+

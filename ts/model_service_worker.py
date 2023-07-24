@@ -11,6 +11,13 @@ import platform
 import socket
 import sys
 import uuid
+import time
+import io
+import zipfile
+
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import padding
 
 from ts.arg_parser import ArgParser
 from ts.metrics.metric_cache_yaml_impl import MetricsCacheYamlImpl
@@ -37,8 +44,22 @@ class TorchModelServiceWorker(object):
         host_addr=None,
         port_num=None,
         metrics_config=None,
+        frontend_ip=None,
+        frontend_port=None,
+        model_name=None,
+        model_file=None,
+        model_decryption=False,
+        decryption_key=None,
     ):
         self.sock_type = s_type
+        self.host = host_addr
+        self.port = port_num
+        self.frontend_ip = frontend_ip
+        self.frontend_port = frontend_port
+        self.model_name = model_name
+        self.model_file = model_file
+        self.model_decryption = model_decryption
+        self.decryption_key = decryption_key
 
         if s_type == "unix":
             if s_name is None:
@@ -87,7 +108,7 @@ class TorchModelServiceWorker(object):
         :return:
         """
         try:
-            model_dir = load_model_request["modelPath"].decode("utf-8")
+            #model_dir = load_model_request["modelPath"].decode("utf-8")
             model_name = load_model_request["modelName"].decode("utf-8")
             handler = (
                 load_model_request["handler"].decode("utf-8")
@@ -113,6 +134,28 @@ class TorchModelServiceWorker(object):
             limit_max_image_pixels = True
             if "limitMaxImagePixels" in load_model_request:
                 limit_max_image_pixels = bool(load_model_request["limitMaxImagePixels"])
+
+            with open(self.model_file, 'rb') as model_file:
+                model = io.BytesIO(model_file.read())
+
+            if self.model_decryption:
+                with open(self.decryption_key, 'rb') as key_file:
+                    key = key_file.read()
+                model = model.getvalue()
+                cipher = Cipher(algorithms.AES(key), modes.ECB(), backend=default_backend())
+                decryptor = cipher.decryptor()
+                unpadder = padding.PKCS7(128).unpadder()
+                unpadded_data = unpadder.update(decryptor.update(model) + decryptor.finalize()) + unpadder.finalize()
+
+                model = io.BytesIO(unpadded_data)
+
+            model_dir = {}
+            with zipfile.ZipFile(model, 'r') as model_zip:
+                file_list = model_zip.namelist()
+                print(file_list)
+                for file_name in file_list:
+                    with model_zip.open(file_name) as file:
+                        model_dir[file_name] = io.BytesIO(file.read())
 
             self.metrics_cache.model_name = model_name
             model_loader = ModelLoaderFactory.get_model_loader()
@@ -180,17 +223,20 @@ class TorchModelServiceWorker(object):
         logging.info("[PID]%d", os.getpid())
         logging.info("Torch worker started.")
         logging.info("Python runtime: %s", platform.python_version())
-
         while True:
             import requests
-            # Try http fist
-            url = "http://" + frontend_ip + ":" + frontend_port + "/models/" + model_name + "?IP=" + host + "&PORT=" + port
-            response = requests.put(url)
+            while True:
+                try:
+                    url = "http://" + self.frontend_ip + ":" + self.frontend_port + "/models/" + self.model_name + "?IP=" + self.host + "&PORT=" + self.port
+                    response = requests.put(url)
+                    if response.status_code < 200 or response.status_code >=300:
+                        url = "https://" + self.frontend_ip + ":" + self.frontend_port + "/models/" + self.model_name + "?IP=" + self.host + "&PORT=" + self.port
+                        response = requests.put(url, verify=False)
+                    break
+                except requests.exceptions.ConnectionError as e:
+                    print("Frontend is not ready. Retry after 30s.")
+                    time.sleep(30)
 
-            # If http get false status_code, then try https
-            if response.status_code < 200 or response.status_code >=300 :
-                url = "https://" + frontend_ip + ":" + frontend_port + "/models/" + model_name + "?IP=" + host + "&PORT=" + port
-                response = requests.put(url, verify=False)
 
             (cl_socket, _) = self.sock.accept()
             # workaround error(35, 'Resource temporarily unavailable') on OSX
@@ -221,6 +267,9 @@ if __name__ == "__main__":
         frontend_ip = args.frontend_ip
         frontend_port = args.frontend_port
         model_name = args.model_name
+        model_file = args.model_file
+        model_decryption = args.model_decryption
+        decryption_key = args.decryption_key
 
 
         if BENCHMARK:
@@ -230,9 +279,17 @@ if __name__ == "__main__":
             pr.disable()
             pr.dump_stats("/tmp/tsPythonProfile.prof")
 
-        worker = TorchModelServiceWorker(
-            sock_type, socket_name, host, port, metrics_config
-        )
+        worker = TorchModelServiceWorker(sock_type,
+                                         socket_name,
+                                         host,
+                                         port,
+                                         metrics_config,
+                                         frontend_ip,
+                                         frontend_port,
+                                         model_name,
+                                         model_file,
+                                         model_decryption,
+                                         decryption_key)
         worker.run_server()
         if BENCHMARK:
             pr.disable()
