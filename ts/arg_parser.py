@@ -171,6 +171,21 @@ class ArgParser(object):
             help="Path to the key for decrypting MAR.",
         )
 
+        parser.add_argument(
+            "-s",
+            "--saved_on_disk",
+            dest="saved_on_disk",
+            action="store_true",
+            help="Whether the model needs to be saved on disk. This will be uesd for limited memory size.",
+        )
+
+        parser.add_argument(
+            "--secured_dir",
+            dest="secured_dir",
+            type=str,
+            help="Path to secured directory where the decrypted model can be saved to.",
+        )
+
         return parser
 
     @staticmethod
