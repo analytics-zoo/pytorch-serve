@@ -96,13 +96,27 @@ class TsModelLoader(ModelLoader):
         if os.path.exists(manifest_file):
             with open(manifest_file) as f:
                 manifest = json.load(f)"""
-        manifest = json.loads(model_dir['MAR-INF/MANIFEST.json'].read())
+        if isinstance(model_dir, dict):
+            manifest = json.loads(model_dir['MAR-INF/MANIFEST.json'].read())
+        else:
+            sys.path.append(model_dir)
+            manifest_file = os.path.join(model_dir, "MAR-INF", "MANIFEST.json")
+            manifest = None
+            if os.path.exists(manifest_file):
+                with open(manifest_file) as f:
+                    manifest = json.load(f)
 
         function_name = None
         try:
-            module, function_name = self._load_handler_file(handler, model_dir[handler])
+            if isinstance(model_dir, dict):
+                module, function_name = self._load_handler_buf(handler, model_dir[handler])
+            else:
+                module, function_name = self._load_handler_file(handler)
         except ImportError:
-            module = self._load_default_handler(handler)
+            if isinstance(model_dir, dict):
+                module = self._load_handler_buf(handler, model_dir[handler])
+            else:
+                module = self._load_handler_file(handler)
 
         if module is None:
             raise ValueError(
@@ -156,7 +170,7 @@ class TsModelLoader(ModelLoader):
 
         return service
 
-    def _load_handler_file(self, handler, handler_buf):
+    def _load_handler_buf(self, handler, handler_buf):
         temp = handler.split(":", 1)
         module_name = temp[0]
         function_name = None if len(temp) == 1 else temp[1]
@@ -169,6 +183,16 @@ class TsModelLoader(ModelLoader):
         module.__name__ = module_name
         sys.modules[module_name] = module
         module = importlib.import_module(module_name)
+        return module, function_name
+
+    def _load_handler_file(self, handler):
+        temp = handler.split(":", 1)
+        module_name = temp[0]
+        if module_name.endswith(".py"):
+            module_name = module_name[:-3]
+        module_name = module_name.split("/")[-1]
+        module = importlib.import_module(module_name)
+        function_name = None if len(temp) == 1 else temp[1]
         return module, function_name
 
     def _load_default_handler(self, handler):

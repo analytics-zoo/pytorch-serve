@@ -50,6 +50,8 @@ class TorchModelServiceWorker(object):
         model_file=None,
         model_decryption=False,
         decryption_key=None,
+        saved_on_disk=False,
+        secured_dir=None,
     ):
         self.sock_type = s_type
         self.host = host_addr
@@ -60,6 +62,8 @@ class TorchModelServiceWorker(object):
         self.model_file = model_file
         self.model_decryption = model_decryption
         self.decryption_key = decryption_key
+        self.saved_on_disk = saved_on_disk
+        self.secured_dir = secured_dir
 
         if s_type == "unix":
             if s_name is None:
@@ -149,13 +153,19 @@ class TorchModelServiceWorker(object):
 
                 model = io.BytesIO(unpadded_data)
 
-            model_dir = {}
-            with zipfile.ZipFile(model, 'r') as model_zip:
-                file_list = model_zip.namelist()
-                print(file_list)
-                for file_name in file_list:
-                    with model_zip.open(file_name) as file:
-                        model_dir[file_name] = io.BytesIO(file.read())
+            if self.saved_on_disk:
+                if not os.path.exists(self.secured_dir):
+                    os.makedirs(self.secured_dir)
+                with zipfile.ZipFile(model, 'r') as model_zip:
+                    model_zip.extractall(self.secured_dir)
+                model_dir = self.secured_dir
+            else:
+                model_dir = {}
+                with zipfile.ZipFile(model, 'r') as model_zip:
+                    file_list = model_zip.namelist()
+                    for file_name in file_list:
+                        with model_zip.open(file_name) as file:
+                            model_dir[file_name] = io.BytesIO(file.read())
 
             self.metrics_cache.model_name = model_name
             model_loader = ModelLoaderFactory.get_model_loader()
@@ -270,6 +280,8 @@ if __name__ == "__main__":
         model_file = args.model_file
         model_decryption = args.model_decryption
         decryption_key = args.decryption_key
+        saved_on_disk = args.saved_on_disk
+        secured_dir = args.secured_dir
 
 
         if BENCHMARK:
@@ -289,7 +301,9 @@ if __name__ == "__main__":
                                          model_name,
                                          model_file,
                                          model_decryption,
-                                         decryption_key)
+                                         decryption_key,
+                                         saved_on_disk,
+                                         secured_dir)
         worker.run_server()
         if BENCHMARK:
             pr.disable()
